@@ -1,4 +1,5 @@
 $ = require 'jquery'
+fs = require 'fs'
 # jquery used only to manipulate editor width
 # we'd rather move away from this dependency than expand on it
 
@@ -169,8 +170,26 @@ module.exports =
       # Enter fullscreen
       atom.setFullScreen true if fullscreen
 
+      # Save all changes, creating full copy on initialization
+      buffer = editor.getBuffer()
+      zenhistoryPath = buffer.getPath() + '.zenhistory'
+
+      # XXX: should be same as source file
+      # XXX: technically a race condition between creating and appending
+      fs.open zenhistoryPath, 'ax', (err, fd) ->
+        if err?
+          if err.code is 'EEXIST'
+            return
+          throw err
+        fs.appendFile fd, buffer.getText(), {encoding: 'utf8', mode: 0o600, flag: 'ax'}, (err) -> if err? then throw err
+
+      @editorChanged = buffer.onDidChange (change) ->
+        appendText = change.changes.reduce ((text, change) -> text + change.newText), ''
+        fs.appendFile zenhistoryPath, appendText, 'utf8', (err) -> if err? then throw err
+
     else
       # Exit Mode
+      @editorChanged?.dispose()
       body.setAttribute 'data-zen', 'false'
 
       # Leave fullscreen
