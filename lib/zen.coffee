@@ -186,6 +186,8 @@ module.exports =
       @editorChanged = buffer.onDidChange (change) ->
         appendText = change.changes.reduce ((text, change) -> text + change.newText), ''
         fs.appendFile zenhistoryPath, appendText, 'utf8', (err) -> if err? then throw err
+        if /\S/.test appendText
+          buffer.save().catch((err) -> throw err)
 
     else
       # Exit Mode
